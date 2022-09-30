@@ -512,6 +512,11 @@ def store_results(bg_exps: list, scaled_exps: list):
         write_processed_xp(newpath + filename + '.uxy', xpu)
         write_processed_xp(newpath + filename + '.sxy', xps)
 
+def store_proc_results(exps: list):
+    for xpu in exps:
+        print('Stored ', xpu.path)
+        write_processed_xp(xpu.path, xpu)
+        
 ###################     Fit file store and load       ###################
 
 def store_fits(xp: XPS_experiment, path: str = None):

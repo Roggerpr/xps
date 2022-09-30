@@ -17,17 +17,17 @@ from xps.xps_bg import *
 logging.getLogger().setLevel(logging.CRITICAL)
 
 plt.rcParams['errorbar.capsize'] = 8
-plt.rcParams['font.size'] = 18
-plt.rcParams['lines.linewidth'] = 2.5
-plt.rc('font', size= 18)
-plt.rc('legend', fontsize= 15)
-plt.rc('xtick', labelsize= 18)
-plt.rc('xtick.major', size=6)
-plt.rc('ytick.major', size=6)
+plt.rcParams['font.size'] = 6
+plt.rc('font', size= 6)
+plt.rc('legend', fontsize= 4)
+plt.rc('xtick', labelsize= 2)
+plt.rc('xtick.major', size=2)
+plt.rc('ytick.major', size=2)
 
-plt.rc('ytick', labelsize= 18)
-plt.rc('axes', labelsize=18)
-plt.rc('axes', titlesize=18)
+plt.rc('ytick', labelsize= 2)
+plt.rc('axes', labelsize=6)
+plt.rc('axes', titlesize=6)
+
 
 def glob_import_raw(globpath: str) -> list:
     files = glob.glob(globpath+'/**/*.xy', recursive=True)

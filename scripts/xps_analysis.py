@@ -285,7 +285,7 @@ def integrateRegions(exps: list, region : str,  asf: dict, indRef: int= None,
         eup, edw = xRef[lmidx], xRef[rmidx]
 
     # Distribute the experiments in the plots in sets of 10
-    nrows = len(experiments) // 10 + int((len(experiments) % 10) != 0)
+    nrows = len(exps) // 10 + int((len(exps) % 10) != 0)
     fig, ax = plt.subplots(nrows, 10, figsize=(10*5, nrows*5) )
     area = []
     for i, xp in enumerate(exps):

@@ -18,17 +18,16 @@ logging.getLogger().setLevel(logging.CRITICAL)
 warnings.filterwarnings("ignore")
 
 plt.rcParams['errorbar.capsize'] = 8
-plt.rcParams['font.size'] = 18
-plt.rcParams['lines.linewidth'] = 2.5
-plt.rc('font', size= 18)
-plt.rc('legend', fontsize= 15)
-plt.rc('xtick', labelsize= 18)
-plt.rc('xtick.major', size=6)
-plt.rc('ytick.major', size=6)
+plt.rcParams['font.size'] = 6
+plt.rc('font', size= 6)
+plt.rc('legend', fontsize= 4)
+plt.rc('xtick', labelsize= 2)
+plt.rc('xtick.major', size=2)
+plt.rc('ytick.major', size=2)
 
-plt.rc('ytick', labelsize= 18)
-plt.rc('axes', labelsize=18)
-plt.rc('axes', titlesize=18)
+plt.rc('ytick', labelsize= 2)
+plt.rc('axes', labelsize=6)
+plt.rc('axes', titlesize=6)
 
 asf = dict({'C1s' : 0.296, 'O1s' : 0.711, 'O1s_sub' : 0.711, 'N1s' : 0.477, 'Ba3d' : 7.49, 'Ba_3d_5/2' : 7.49, 'Ba_3d_3/2' : 5.20,
             'Br3p' : 1.054, 'Cu_2p' : 5.321, 'Ba4d': 2.35, 'Na1s' : 1.685, 'Cl2s' : 0.37, 'Ru3d' : 4.273,
@@ -123,7 +122,9 @@ def fast_sto_main(globpath : str, cleanRef: int = 0):
 
 
     #plot_coverages(experiments)
-    store_results(unscaled, subo)
+    store_proc_results(unscaled)
+    store_proc_results(subo)
+
     plt.show()
 
 ######### Main #########
