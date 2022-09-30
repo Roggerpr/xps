@@ -45,10 +45,7 @@ def glob_import_raw(globpath: str) -> list:
         print('Imported ', xp.name)
     return experiments
 
-def bg_subtraction(experiments: list) ->list:
-
-    #regions = ['C1s', 'N1s', 'O1s', 'Si2p', 'In3d', 'C1s_(2)', 'N1s_(2)', 'O1s_(2)', 'Si2p_(2)', 'Si2s', 'Ba3d', 'Cl2p']#, 'Sn3d']
-    regions = get_all_regions(experiments)
+def bg_subtraction(experiments: list, regions: list) ->list:
 
     nfigs = len(experiments) // 15 + int((len(experiments) % 15) != 0) # Distribute the experiments in the plots in sets of 15
     bg_set = []
@@ -72,7 +69,8 @@ def compress_regions(bg_exps: list, indRef: int, region='N1s', flag_plot:bool = 
 def fast_preproc_main(globpath : str):
     experiments = glob_import_raw(globpath)
 
-    #regions = ['C1s', 'N1s', 'O1s', 'Si2p', 'In3d', 'Sn3d', 'Ba3d', 'Cl2p']
+    #regions = ['C1s', 'N1s', 'O1s', 'Si2p', 'In3d', 'C1s_(2)', 'N1s_(2)', 'O1s_(2)', 'Si2p_(2)', 'Si2s', 'Ba3d', 'Cl2p']#, 'Sn3d']
+    regions = get_all_regions(experiments)
 
     trimmed_exps = batch_trimming(experiments, regions, flag_plot=False)
     print('Trimmed experiments')

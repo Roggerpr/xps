@@ -21,7 +21,6 @@ def find_and_plot_peaks(df : pd.DataFrame, thres : float = 0.5, min_d : int = 10
 
     return peaks
 
-
 def find_shift(xp : XPS_experiment, xpRef : XPS_experiment, region : str) -> float:
     """Compare maxima between two spectra and get energy shift"""
     x = xp.dfx[region].dropna().energy
@@ -264,33 +263,6 @@ def compress_noisy_region(xp: XPS_experiment, xpRef: XPS_experiment, region, lb:
         xpNew = deepcopy(xp)
         xpNew.dfx[region].counts = y_scale
         return xpNew
-
-def insert_dfx_region(xp: XPS_experiment, xpFrom:XPS_experiment, region: str, inplace:bool = False):
-    """Insert a region from one dfx (xpFrom) into another (xp) for which it is missing"""
-    sourcedf = xp.dfx
-    newreg = xpFrom.dfx[region]
-    names = list(sourcedf.columns.levels[0].values)
-    dfnew = pd.DataFrame()
-    frames = []
-
-    for n in names:    # Loop over regions
-        x = sourcedf[n].energy.dropna()
-        frames.append( pd.DataFrame([x, sourcedf[n].counts]).T )
-
-    frames.append(pd.DataFrame([newreg.energy, newreg.counts]).T)
-    names.append(region)
-    dfnew = pd.concat(frames, axis=1)
-
-    mi = pd.MultiIndex.from_product([names, np.array(['energy', 'counts'])])
-    mi.to_frame()
-    dfnew.columns = mi
-    if inplace:
-        xp.dfx = dfnew
-        return xp
-    else:
-        xpNew = deepcopy(xp)
-        xpNew.dfx = dfnew
-    return xpNew
 
 def find_integration_limits(x, y, flag_plot = False, region : str = None, ax = None):
     """Utility to locate limits for shirley bg subtraction"""
@@ -773,11 +745,7 @@ class XPBackground(object):
 ###########################   To use in nb with list of experiments   ###########################
 
 
-<<<<<<< HEAD
 def batch_bg_subtract(experiments : list, regions : list, flag_plot:bool = True, flag_debug:bool = False) -> list:
-=======
-def bulk_bg_subtract(experiments : list, regions : list, flag_plot:bool = True, flag_debug:bool = False) -> list:
->>>>>>> f0c81d2490021196de014e79c602783b357c5a41
     """Perform shirley bg subtraction on specified regions from several experiments
     Plot results and store them new list of experiments"""
     bg_exps = deepcopy(experiments)

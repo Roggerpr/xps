@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import peakutils
 import os
 import re
+from copy import deepcopy
 from scipy.optimize import curve_fit
 from lmfit.model import ModelResult, Model, Parameters
 from dataclasses import dataclass
@@ -316,6 +317,36 @@ def get_all_regions(experiments: list)->list:
             if ('overview' not in r) and (r not in allr):
                 allr.append(r)
     return allr
+
+##############################   Insert region from other experiment  ###########################
+
+
+def insert_dfx_region(xp: XPS_experiment, xpFrom:XPS_experiment, region: str, inplace:bool = False):
+    """Insert a region from one dfx (xpFrom) into another (xp) for which it is missing"""
+    sourcedf = xp.dfx
+    newreg = xpFrom.dfx[region]
+    names = list(sourcedf.columns.levels[0].values)
+    dfnew = pd.DataFrame()
+    frames = []
+
+    for n in names:    # Loop over regions
+        x = sourcedf[n].energy.dropna()
+        frames.append( pd.DataFrame([x, sourcedf[n].counts]).T )
+
+    frames.append(pd.DataFrame([newreg.energy, newreg.counts]).T)
+    names.append(region)
+    dfnew = pd.concat(frames, axis=1)
+
+    mi = pd.MultiIndex.from_product([names, np.array(['energy', 'counts'])])
+    mi.to_frame()
+    dfnew.columns = mi
+    if inplace:
+        xp.dfx = dfnew
+        return xp
+    else:
+        xpNew = deepcopy(xp)
+        xpNew.dfx = dfnew
+    return xpNew
 
 ##############################   Processed files  ###########################
 
