@@ -30,9 +30,16 @@ plt.rc('ytick', labelsize= 18)
 plt.rc('axes', labelsize=18)
 plt.rc('axes', titlesize=18)
 
-asf = dict({'C1s' : 0.296, 'O1s' : 0.711, 'N1s' : 0.477, 'Ba3d' : 7.49,
-            'Br3p' : 1.054, 'Br3d' : 1.054, 'In3d_(2)' : 4.359,
-           'In3d' : 4.359, 'Sn3d' : 4.725, 'Cl2p' : 0.891, 'Si2p': 0.339})
+asf = dict({'C1s' : 0.296, 'O1s' : 0.711, 'O1s_sub' : 0.711, 'N1s' : 0.477, 'Ba3d' : 7.49, 'Ba_3d_5/2' : 7.49, 'Ba_3d_3/2' : 5.20,
+            'Br3p' : 1.054, 'Cu_2p' : 5.321, 'Ba4d': 2.35, 'Na1s' : 1.685, 'Cl2s' : 0.37, 'Ru3d' : 4.273,
+           'In3d' : 4.359, 'Sn3d' : 4.725, 'Cl2p' : 0.891, 'Si2p': 0.339, 'Ag3d': 5.987, 'Zn2p': 3.576})
+
+asfScof = {}
+for r in newregs:
+    asfScof.update(search_asf(r))
+
+asfScof['Ba3d'] = search_asf('Ba3d5/2')['Ba3d5/2']
+asfScof['O1s_sub'] = asfScof['O1s']
 
 mfps = {'Cu2p' : 1.86, 'In3d': 3.05, 'Si2p': 3.8}
 
@@ -49,53 +56,69 @@ def glob_import_unscaled(globpath: str) -> list:
 
 def bulk_integrate_areas(experiments: list, regions: list) ->list:
 
-    #fig, ax = plt.subplots
     for i,r in enumerate(regions):
         integrateRegions(experiments, region=r, asf=asf)#, indRef=indRefs[i])
     #integrateRegions(experiments, region='Ba3d', asf=asf, edw=775, eup=801)
 
-def plot_coverages(experiments):
-    layers, dlayers = [], []
-    names = []
-    for xp in experiments:
-        try:
-            layers.append(xp.area['layers'])
-            dlayers.append(xp.area['dlayers'])
-            names.append(xp.name)
-        except KeyError:
-            pass
+def filter_he_tail(subo: list, cleans: list, cleanRef: int = 0):
+    """Crop spectra up to the peak of the original clean"""
+    x = cleans[cleanRef].dfx['O1s'].energy.dropna()
+    y = cleans[cleanRef].dfx['O1s'].counts.dropna()
 
-    fig = plt.figure()
-    plt.errorbar(x=names, y=layers, yerr=dlayers, fmt='o', label='Rate $R_0$')
-    ax = plt.gca()
-    ax.set_ylabel('Layers')
-    ax.legend()
+    epeak = x[np.argmax(y)]
+    for xp in subo:
+        crop_spectrum(xp, region='O1s_sub', edw=epeak, inplace=True)
 
-def store_results(exps: list):
+def subtract_ito_ox(exps: list, cleanRef: int = 0):
 
-    for xpu in exps:
-        print('Stored ', xpu.path)
-        write_processed_xp(xpu.path, xpu)
+    ### Sort experiments in clean and coated
+    cleans = [xp for xp in exps if 'clean' in xp.name ]
+    g2 = [xp for xp in exps if 'clean' not in xp.name]
 
-def fast_preproc_main(globpath : str):
-    experiments = glob_import_unscaled(globpath)
+    ### Scale to O1s
+    scalo = scale_and_plot_spectra([cleans[cleanRef]] + g2, indRef=0, region='O1s')
 
-    regions = ['C1s', 'N1s', 'O1s', 'In3d', 'Si2p']
+    ### Subtract clean (ITO) component
+    subo = []
+    for xp in scalo[1:]:
+        xpsub = subtract_ref_region(xp, scalo[0], 'O1s')
+        subo.append(xpsub)
 
-    bulk_integrate_areas(experiments, regions)
+    ### Filter and background subtraction
+    filter_he_tail(subo, cleans, cleanRef)
+    subo = region_bg_subtract(subo, 'O1s_sub')
+
+    return subo
+
+def fast_sto_main(globpath : str, cleanRef: int = 0):
+    unscaled = glob_import_unscaled(globpath)
+
+    #regions = ['C1s', 'N1s', 'O1s', 'In3d', 'Si2p']
+    regions = get_all_regions(unscaled)     # Get regions of all experiments
+    newregs = []
+    for r in regions:                           # Filter out '_bg' or '(2), (3)' ones
+        if ('(' not in r) and ('_bg' not in r):
+        newregs.append(r)
+    regions = newregs
+
+    subo = subtract_ito_ox(unscaled, cleanRef = cleanRef)
+
+    bulk_integrate_areas(subo, regions)
     print('Stoichiometry values:')
 
     num, denom = (('N1s', 'C1s', 'C1s', 'N1s', 'C1s'), ('O1s', 'N1s', 'O1s', 'Si2p', 'Si2p'))
-    #make_stoichometry_table(experiments,  num=num, denom=denom, sep=' \t ')
+    make_stoichometry_table(subo,  num=num, denom=denom, sep=' \t ')
 
-#    num, denom = (('N1s', 'Cl2p'), ('Ba3d', 'Ba3d'))
-#    make_stoichometry_table(experiments[:2],  num=num, denom=denom, sep=' \t ')
+    bas = [xp for xp in subo if '_Ba' in xp.name]
+    for xp in bas:
+        xp.area['G2'] = xp.area['N1s'] / 4
+
+    num, denom = (('Ba3d', 'Ba3d'), ('N1s', 'Cl2p'))
+    make_stoichometry_table(bas,  num=num, denom=denom, sep=' \t ')
 
 
-#    num, denom = (('In3d', 'In3d'), ('O1s', 'Sn3d'))
-    make_stoichometry_table(experiments,  num=num, denom=denom, sep=' \t ')
 
-    inds = [[4, 3]]#, [3, 2]]
+    #inds = [[4, 3]]#, [3, 2]]
 
     #inds = [guess_clean_xp(experiments)]
 
@@ -104,11 +127,13 @@ def fast_preproc_main(globpath : str):
 
 
     #plot_coverages(experiments)
-    store_results(experiments)
+    store_results(unscaled, subo)
     plt.show()
 
 ######### Main #########
 if __name__ == "__main__":
     globpath = sys.argv[1]
+    cleanRef = sys.argv[2]
+    if cleanRef == None: cleanRef = 0
 
-    fast_preproc_main(globpath)
+    fast_sto_main(globpath, cleanRef)
