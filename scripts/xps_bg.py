@@ -773,7 +773,11 @@ class XPBackground(object):
 ###########################   To use in nb with list of experiments   ###########################
 
 
+<<<<<<< HEAD
 def batch_bg_subtract(experiments : list, regions : list, flag_plot:bool = True, flag_debug:bool = False) -> list:
+=======
+def bulk_bg_subtract(experiments : list, regions : list, flag_plot:bool = True, flag_debug:bool = False) -> list:
+>>>>>>> f0c81d2490021196de014e79c602783b357c5a41
     """Perform shirley bg subtraction on specified regions from several experiments
     Plot results and store them new list of experiments"""
     bg_exps = deepcopy(experiments)
