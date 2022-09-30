@@ -106,6 +106,19 @@ def import_group_xp(path):
         experiments.append(xp)
     return experiments
 
+def sort_group_xp(group: list):
+    """Search for overview_HD group and merge in main group"""
+    if 'overview' in group[1].name:
+        print('Merging groups, overview_HD found')
+        indx = group[1].dfx.columns.levels[0].values
+        ov = indx[np.where('overview' in indx)[0][0]]
+        insert_dfx_region(group[0], group[1], region=ov)
+
+        return group[0].dfx
+    else:
+        print('Found zy scanning group or other pattern, import separately ', os.path.split(group[0].path)[1] )
+        print([xp.name for xp in group])
+        raise TypeError
 
 def excitation_energy_metadata(path : str , name : str):
         """Find the excitation energy for a region in XPS '.xy' file
@@ -209,22 +222,25 @@ class XPS_experiment:
 def xps_data_import(path : str, name : str = None, label : str = None, color: str = None) -> XPS_experiment:
     """Method to arrange a XPS_experiment data"""
     import re
-    dfx = import_xps_df(path)
     delimiters = xy_region_delimiters(path)
     skipRows0, nrows0, regions = delimiters[:]
     dfx = import_single_df(path, skipRows0, nrows0, regions)
 
-    if check_arrays(dfx[delimiters[2][0]]):
-        hv = excitation_energy_metadata(path, delimiters[2][0])
-        dfx = ke_to_be(dfx, hv)
+    try:
+        if check_arrays(dfx[delimiters[2][0]]):
+            hv = excitation_energy_metadata(path, delimiters[2][0])
+            dfx = ke_to_be(dfx, hv)
+    except ValueError:
+        group = import_group_xp(path)
+        dfx = sort_group_xp(group)  # Search for overview_HD
 
     relpath, filename = os.path.split(path)
     dir_name = os.path.split(relpath)[1]
     da = re.search('\d+_', filename).group(0).replace('/', '').replace('_', '')
     if da[:4] != '2020':
-        date = re.sub('(\d{2})(\d{2})(\d{4})', r"\1.\2.\3", da, flags=re.DOTALL)
-    else:
         date = re.sub('(\d{4})(\d{2})(\d{2})', r"\1.\2.\3", da, flags=re.DOTALL)
+    else:
+        date = re.sub('(\d{2})(\d{2})(\d{4})', r"\1.\2.\3", da, flags=re.DOTALL)
 
     other_meta = filename.replace(da, '')[1:].strip('.xy')
     if name == None: name = other_meta
@@ -293,7 +309,13 @@ def read_scan_acquisition_time(path):
                 read_time.append(datetime.datetime.strptime(rt, '%m/%d/%y %H:%M:%S UTC') )
     return read_time
 
-
+def get_all_regions(experiments: list)->list:
+    allr = []
+    for xp in experiments:
+        for r in xp.dfx.columns.levels[0].values:
+            if ('overview' not in r) and (r not in allr):
+                allr.append(r)
+    return allr
 
 ##############################   Processed files  ###########################
 
@@ -446,6 +468,19 @@ def pickle_xp(file : str, xp : XPS_experiment):
     with open(file, 'wb') as out:
         pickle.dump(xp, out, -1)
 
+def store_results(bg_exps: list, scaled_exps: list):
+
+    for xpu, xps in zip(bg_exps, scaled_exps):
+        filepath, filename = os.path.split(xpu.path)
+        filename = os.path.splitext(filename)[0]
+        newpath = filepath + '/proc/'
+        try:
+            os.mkdir(newpath)
+        except FileExistsError: pass
+        print('Stored ', newpath + filename)
+        write_processed_xp(newpath + filename + '.uxy', xpu)
+        write_processed_xp(newpath + filename + '.sxy', xps)
+
 ###################     Fit file store and load       ###################
 
 def store_fits(xp: XPS_experiment, path: str = None):
@@ -499,15 +534,12 @@ def import_simulation_file(path: str, ke: bool = False) -> XPS_experiment:
     xpsim = XPS_experiment(path = path, name=name, dfx=df, area={}, fit={})
     return xpsim
 
-def splice_overview(xp: XPS_experiment, region: str, eup: float, edw: float) -> XPS_experiment:
-    """Select a region of the spectrum overview and insert it in the dfx"""
-    try:
-        xpc = crop_spectrum(xp, 'overview', eup=eup, edw=edw)
-        xpc.dfx.rename(columns={'overview':region}, inplace=True)
 
-    except KeyError:
-        xpc = crop_spectrum(xp, 'overview_', eup=eup, edw=edw)
-        xpc.dfx.rename(columns={'overview_':region}, inplace=True)
+def splice_overview(xp: XPS_experiment, region: str, eup: float, edw: float, ov: str = 'overview') -> XPS_experiment:
+    """Select a region of the spectrum overview and insert it in the dfx"""
+    xpc = deepcopy(xp)
+    xpc = crop_spectrum(xp, ov, eup=eup, edw=edw)
+    xpc.dfx.rename(columns={ov:region}, inplace=True)
 
     insert_dfx_region(xp, xpc, region, inplace=True)
-    return xp
+    return xpc
