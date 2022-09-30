@@ -34,13 +34,6 @@ asf = dict({'C1s' : 0.296, 'O1s' : 0.711, 'O1s_sub' : 0.711, 'N1s' : 0.477, 'Ba3
             'Br3p' : 1.054, 'Cu_2p' : 5.321, 'Ba4d': 2.35, 'Na1s' : 1.685, 'Cl2s' : 0.37, 'Ru3d' : 4.273,
            'In3d' : 4.359, 'Sn3d' : 4.725, 'Cl2p' : 0.891, 'Si2p': 0.339, 'Ag3d': 5.987, 'Zn2p': 3.576})
 
-asfScof = {}
-for r in newregs:
-    asfScof.update(search_asf(r))
-
-asfScof['Ba3d'] = search_asf('Ba3d5/2')['Ba3d5/2']
-asfScof['O1s_sub'] = asfScof['O1s']
-
 mfps = {'Cu2p' : 1.86, 'In3d': 3.05, 'Si2p': 3.8}
 
 nm = 1e-6
@@ -76,7 +69,8 @@ def subtract_ito_ox(exps: list, cleanRef: int = 0):
     g2 = [xp for xp in exps if 'clean' not in xp.name]
 
     ### Scale to O1s
-    scalo = scale_and_plot_spectra([cleans[cleanRef]] + g2, indRef=0, region='O1s')
+    scalo = scale_and_plot_spectra([cleans[cleanRef]] + g2,
+    indRef=0, region='O1s', flag_plot=False)
 
     ### Subtract clean (ITO) component
     subo = []
@@ -86,20 +80,22 @@ def subtract_ito_ox(exps: list, cleanRef: int = 0):
 
     ### Filter and background subtraction
     filter_he_tail(subo, cleans, cleanRef)
-    subo = region_bg_subtract(subo, 'O1s_sub')
+    subo = region_bg_subtract(subo, 'O1s_sub', flag_plot=False)
 
     return subo
 
 def fast_sto_main(globpath : str, cleanRef: int = 0):
     unscaled = glob_import_unscaled(globpath)
-
+    #unscaled = unscaled[:10]
     #regions = ['C1s', 'N1s', 'O1s', 'In3d', 'Si2p']
     regions = get_all_regions(unscaled)     # Get regions of all experiments
     newregs = []
+
     for r in regions:                           # Filter out '_bg' or '(2), (3)' ones
         if ('(' not in r) and ('_bg' not in r):
-        newregs.append(r)
+            newregs.append(r)
     regions = newregs
+    #print(regions)
 
     subo = subtract_ito_ox(unscaled, cleanRef = cleanRef)
 
@@ -133,7 +129,7 @@ def fast_sto_main(globpath : str, cleanRef: int = 0):
 ######### Main #########
 if __name__ == "__main__":
     globpath = sys.argv[1]
-    cleanRef = sys.argv[2]
+    cleanRef = int(sys.argv[2])
     if cleanRef == None: cleanRef = 0
 
     fast_sto_main(globpath, cleanRef)

@@ -284,9 +284,12 @@ def integrateRegions(exps: list, region : str,  asf: dict, indRef: int= None,
         lmidx, rmidx = ind[-2:] # The index of the minima are always the last two
         eup, edw = xRef[lmidx], xRef[rmidx]
 
-    fig, ax = plt.subplots(1, len(exps), figsize=(len(exps)*5, 5) )
+    # Distribute the experiments in the plots in sets of 10
+    nrows = len(experiments) // 10 + int((len(experiments) % 10) != 0)
+    fig, ax = plt.subplots(nrows, 10, figsize=(10*5, nrows*5) )
     area = []
     for i, xp in enumerate(exps):
+        l, m = i%10, i//10
         try:
             y = xp.dfx[region].dropna().counts
         except KeyError as e:          #Check the region exists in this xp
@@ -295,7 +298,7 @@ def integrateRegions(exps: list, region : str,  asf: dict, indRef: int= None,
             continue
 
         x = xp.dfx[region].dropna().energy
-        ax[i].plot(x, y, label=xp.name)
+        ax[m,l].plot(x, y, label=xp.name)
 
         xpCrop = crop_spectrum(xp, region, eup = eup, edw = edw)
         yc = xpCrop.dfx[region].dropna().counts.values
@@ -316,19 +319,18 @@ def integrateRegions(exps: list, region : str,  asf: dict, indRef: int= None,
 
         if flag_fill:
             if yc[0] > yc[-1]:
-                ax[i].fill_between(xc , y1 = yc[-1], y2 = yc, alpha=0.3)
+                ax[m,l].fill_between(xc , y1 = yc[-1], y2 = yc, alpha=0.3)
             else:
-                ax[i].fill_between(xc, y1 = yc[0], y2 = yc, alpha=0.3)
-            ybase = ax[i].get_ylim()[0]
+                ax[m,l].fill_between(xc, y1 = yc[0], y2 = yc, alpha=0.3)
+            ybase = ax[m,l].get_ylim()[0]
 
             for j in [0, -1]:
-                ax[i].vlines(xc[j], ymin=ybase, ymax=yc[j], linestyles='--')
-                ax[i].text(s='%.2f'%xc[j], x = xc[j], y = yc[j])
-        cosmetics_plot(ax=ax[i])
+                ax[m,l].vlines(xc[j], ymin=ybase, ymax=yc[j], linestyles='--')
+                ax[m,l].text(s='%.2f'%xc[j], x = xc[j], y = yc[j])
+        cosmetics_plot(ax=ax[m,l])
     plt.tight_layout()
     fig.suptitle(region)
     return area
-
 
 def integratePeak(xp: XPS_experiment, region: str, asf: dict, nsigma: int = 4,
                   fitm: str = ['v', 'dv'], sepPt: float = None, flag_fill: bool = True):

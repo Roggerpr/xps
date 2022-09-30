@@ -21,6 +21,7 @@ def find_and_plot_peaks(df : pd.DataFrame, thres : float = 0.5, min_d : int = 10
 
     return peaks
 
+
 def find_shift(xp : XPS_experiment, xpRef : XPS_experiment, region : str) -> float:
     """Compare maxima between two spectra and get energy shift"""
     x = xp.dfx[region].dropna().energy
@@ -125,28 +126,31 @@ def scale_and_plot_spectra(bg_exps : list, indRef: int = 0 , region : str = 'ove
         except KeyError as e:
             print('KeyError in %s' %e)
             pass
-        ax[j][0].plot(df.energy, df.counts, '-b', label=lb[0])
-        ax[j][0].plot(dfRef.energy, dfRef.counts, '-r', label=lb[1] + ' (ref.)')
-
-        indmax = np.argmax(dfRef.counts.values) # Get only highest peak
-        indmin = np.argmin(dfRef.counts[indmax : ]) # Get absolute minimum in near neighbourhood
-        ax[j][0].axhline(dfRef.counts[indmax], color='k', ls = '--')
-        ax[j][0].axhline(dfRef.counts[indmin], color='k', ls = '--')
-        ax[j][0].axvline(dfRef.energy[indmax], color='k', ls = '--')
-
-        cosmetics_plot(ax = ax[j][0])
-        ax[j][0].set_title('Baseline and peak')
 
         scale_factor = (np.max(dfRef.counts) - np.min(dfRef.counts)) / (np.max(df.counts) - np.min(df.counts))
         y_scale = df.counts * scale_factor
 
-        ax[j][1].plot(df.energy, y_scale, '-b', label=lb[0])
-        ax[j][1].plot(dfRef.energy, dfRef.counts , '-r', label=lb[1]+ ' (ref.)')
-        cosmetics_plot(ax = ax[j][1])
-        ax[j][1].set_title('Scaling result')
         scaled_exps.append(scale_dfx(xp = xp, scale_factor = scale_factor))
-    fig.tight_layout()
-    if not flag_plot: plt.clf(); plt.close()
+
+        if flag_plot:
+            ax[j][0].plot(df.energy, df.counts, '-b', label=lb[0])
+            ax[j][0].plot(dfRef.energy, dfRef.counts, '-r', label=lb[1] + ' (ref.)')
+
+            indmax = np.argmax(dfRef.counts.values) # Get only highest peak
+            indmin = np.argmin(dfRef.counts[indmax : ]) # Get absolute minimum in near neighbourhood
+            ax[j][0].axhline(dfRef.counts[indmax], color='k', ls = '--')
+            ax[j][0].axhline(dfRef.counts[indmin], color='k', ls = '--')
+            ax[j][0].axvline(dfRef.energy[indmax], color='k', ls = '--')
+
+            cosmetics_plot(ax = ax[j][0])
+            ax[j][0].set_title('Baseline and peak')
+
+
+            ax[j][1].plot(df.energy, y_scale, '-b', label=lb[0])
+            ax[j][1].plot(dfRef.energy, dfRef.counts , '-r', label=lb[1]+ ' (ref.)')
+            cosmetics_plot(ax = ax[j][1])
+            ax[j][1].set_title('Scaling result')
+    if flag_plot: fig.tight_layout()
 
     return scaled_exps
 
@@ -744,7 +748,6 @@ class XPBackground(object):
 
 ###########################   To use in nb with list of experiments   ###########################
 
-
 def batch_bg_subtract(experiments : list, regions : list, flag_plot:bool = True, flag_debug:bool = False) -> list:
     """Perform shirley bg subtraction on specified regions from several experiments
     Plot results and store them new list of experiments"""
@@ -786,6 +789,8 @@ def region_bg_subtract(experiments : list, region = str, flag_plot:bool = True) 
     Plot results and store them new list of experiments"""
     bg_exps = []
     fig, ax = plt.subplots(len(experiments), 2, figsize=(12, 6 * len(experiments)))
+    fig.set_size_inches(12, 6*len(experiments))
+
     for j, xp in enumerate(experiments):
         try:
             xp_bg = subtract_shirley_bg(xp, region, maxit=100, lb='__nolabel__', ax = ax[j][0], offset=500*j)
@@ -802,15 +807,18 @@ def region_bg_subtract(experiments : list, region = str, flag_plot:bool = True) 
 
         bg_exps.append(xp_bg)
 
-    fig.tight_layout()
     if not flag_plot: plt.clf(); plt.close()
+    else: fig.tight_layout()
     return bg_exps
 
 def region_2bg_subtract(experiments : list, region : str, xlim : float, flag_plot : bool = True) -> list:
     """Inspect double shirley bg subtraction for specified region from several experiments
     Plot results and store them new list of experiments"""
     bg_exps = []
+
     fig, ax = plt.subplots(len(experiments), 2, figsize=(12, 6 * len(experiments)))
+    fig.set_size_inches(12, 6*len(experiments))
+
     for j, xp in enumerate(experiments):
         try:
             xp_bg = subtract_double_shirley(xp, region, xlim=xlim, maxit=100, lb=xp.name, flag_plot=flag_plot, ax = ax[j][0])
@@ -824,7 +832,6 @@ def region_2bg_subtract(experiments : list, region : str, xlim : float, flag_plo
         except KeyError as e:
             xp_bg = xp
             print('KeyError in', e)
-
 
         bg_exps.append(xp_bg)
 
