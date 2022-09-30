@@ -52,13 +52,12 @@ def bg_subtraction(experiments: list, regions: list) ->list:
 
     for n in range(nfigs):
         plt.figure()
-        bg_set.append(batch_bg_subtract(trimmed[15*n:15*(n+1)], regions, flag_plot=True))
+        bg_set.append(batch_bg_subtract(experiments[15*n:15*(n+1)], regions, flag_plot=True))
     bg_exps = [xp for bgs in bg_set for xp in bgs] # Flatten the list of lists
 
     bg_exps = region_2bg_subtract(bg_exps, region='In3d', xlim=449.6, flag_plot=False)
     #bg_exps = region_2bg_subtract(bg_exps, region='Sn3d', xlim=491.4, flag_plot=False)
 
-    print([xp.name for xp in bg_exps])
     return bg_exps
 
 def compress_regions(bg_exps: list, indRef: int, region='N1s', flag_plot:bool = True):
@@ -75,8 +74,9 @@ def fast_preproc_main(globpath : str):
     trimmed_exps = batch_trimming(experiments, regions, flag_plot=False)
     print('Trimmed experiments')
 
-    bg_exps = bg_subtraction(trimmed)
+    bg_exps = bg_subtraction(trimmed_exps, regions)
     print('Background subtracted, check plots')
+
     #plot_xp_regions(bg_exps, regions, ncols=4);
 
     #compress_regions(bg_exps, indRef=0, region='N1s', flag_plot=False)
