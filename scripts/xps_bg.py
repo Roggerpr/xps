@@ -209,11 +209,13 @@ def subtract_ref_region(xp : XPS_experiment, xpRef: XPS_experiment, region: str,
     df, dfRef = xp.dfx[region].dropna(), xpRef.dfx[region].dropna()
     y_sub = df.counts - dfRef.counts
     if inplace:
-        xp.dfx[region] = pd.DataFrame([xp.dfx[region].energy, y_sub]).T
+        xp.dfx[region+'_sub', 'energy'] = pd.Series(xp.dfx[region].energy)
+        xp.dfx[region+'_sub', 'counts']  = pd.Series(y_sub)
         return xp
     else:
         xpNew = deepcopy(xp)
-        xpNew.dfx[region] = pd.DataFrame([xpNew.dfx[region].energy, y_sub]).T
+        xpNew.dfx[region+'_sub', 'energy'] = pd.Series(xp.dfx[region].energy)
+        xpNew.dfx[region+'_sub', 'counts']  = pd.Series(y_sub)
         return xpNew
 
 def clean_reg_subtract(exps: list, xpRef: XPS_experiment, region: str):
@@ -389,30 +391,39 @@ def shirley_loop(x, y,
         return (yr + B)
 
 def subtract_shirley_bg(xp : XPS_experiment, region : str, maxit : int = 10,
-                        lb : str = '__nolabel__', ax = None, store: bool = True) -> XPS_experiment:
+                        lb : str = '__nolabel__', offset: float = 0,
+                        ax = None, store: bool = True,
+                        verbose: bool = False, inplace: bool = False) -> XPS_experiment:
     """Plot region and shirley background. Decorator for shirley_loop function"""
     x, y = xp.dfx[region].dropna().energy.values, xp.dfx[region].dropna().counts.values
-    col = plot_region(xp = xp, region = region, lb = lb, ax = ax).get_color()
+    col = plot_region(xp = xp, region = region, lb = lb, ax = ax, offset=offset).get_color()
 
-    find_integration_limits(x, y, flag_plot=True, region = region, ax = ax)
+    find_integration_limits(x, y, flag_plot=verbose, region = region, ax = ax)
     ybg = shirley_loop(x, y, maxit = maxit)
 
     if ax == None: ax = plt.gca()
-    ax.plot(x, ybg, '--', color=col, label=lb);
+    ax.plot(x, ybg + offset, '--', color=col, label=lb);
     #cosmetics_plot(ax = ax)
 
     dfnew = pd.DataFrame({'energy' : x, 'counts' : y - ybg})
-    xpNew = deepcopy(xp)
-    xpNew.dfx[region] = dfnew
 
-    if store:
-        xpNew.dfx[region+'_bg', 'energy'] = pd.Series(x)
-
-        xpNew.dfx[region+'_bg', 'counts']  = pd.Series(ybg)
-    return xpNew
+    if inplace:
+        xp.dfx[region] = dfnew
+        if store:
+            xp.dfx[region+'_bg', 'energy'] = pd.Series(x)
+            xp.dfx[region+'_bg', 'counts']  = pd.Series(ybg)
+        return xp
+    else:
+        xpNew = deepcopy(xp)
+        xpNew.dfx[region] = dfnew
+        if store:
+            xpNew.dfx[region+'_bg', 'energy'] = pd.Series(x)
+            xpNew.dfx[region+'_bg', 'counts']  = pd.Series(ybg)
+        return xpNew
 
 def subtract_double_shirley(xp : XPS_experiment, region : str, xlim : float, maxit : int = 10,
-                        lb : str = None, ax = None, flag_plot : bool = False, store: bool = True) -> XPS_experiment:
+                        lb : str = None, ax = None, flag_plot : bool = False,
+                         store: bool = True, inplace: bool = False) -> XPS_experiment:
     """Shirley bg subtraction for double peak"""
     x, y = xp.dfx[region].dropna().energy.values, xp.dfx[region].dropna().counts.values
     col = plot_region(xp, region, ax = ax, lb=lb).get_color()
@@ -435,18 +446,24 @@ def subtract_double_shirley(xp : XPS_experiment, region : str, xlim : float, max
     y12 = y - ybg
 
     dfnew = pd.DataFrame({'energy' : x, 'counts' : y12})
-    xpNew = deepcopy(xp)
-    xpNew.dfx[region] = dfnew
 
-    if store:
-        xpNew.dfx[region+'_bg', 'energy'] = pd.Series(x)
-
-        xpNew.dfx[region+'_bg', 'counts']  = pd.Series(ybg)
-
-    return xpNew
+    if inplace:
+        xp.dfx[region] = dfnew
+        if store:
+            xp.dfx[region+'_bg', 'energy'] = pd.Series(x)
+            xp.dfx[region+'_bg', 'counts']  = pd.Series(ybg)
+        return xp
+    else:
+        xpNew = deepcopy(xp)
+        xpNew.dfx[region] = dfnew
+        if store:
+            xpNew.dfx[region+'_bg', 'energy'] = pd.Series(x)
+            xpNew.dfx[region+'_bg', 'counts']  = pd.Series(ybg)
+        return xpNew
 
 def subtract_ALShirley_bg(xp : XPS_experiment, region : str, maxit : int = 10,
-                          lb : str = '__nolabel__', ax = None, store: bool = True) -> XPS_experiment:
+                          lb : str = '__nolabel__', ax = None,
+                          store: bool = True, inplace: bool = False) -> XPS_experiment:
     """Plot region and shirley background. Decorator for shirley_loop function"""
     x, y = xp.dfx[region].dropna().energy.values, xp.dfx[region].dropna().counts.values
     col = plot_region(xp = xp, region = region, lb = lb, ax = ax).get_color()
@@ -467,15 +484,20 @@ def subtract_ALShirley_bg(xp : XPS_experiment, region : str, maxit : int = 10,
     #cosmetics_plot(ax = ax)
 
     dfnew = pd.DataFrame({'energy' : x, 'counts' : y - ybg})
-    xpNew = deepcopy(xp)
-    xpNew.dfx[region] = dfnew
 
-    if store:
-        xpNew.dfx[region+'_bg', 'energy'] = pd.Series(x)
-
-        xpNew.dfx[region+'_bg', 'counts']  = pd.Series(yAlsDw)
-
-    return xpNew
+    if inplace:
+        xp.dfx[region] = dfnew
+        if store:
+            xp.dfx[region+'_bg', 'energy'] = pd.Series(x)
+            xp.dfx[region+'_bg', 'counts']  = pd.Series(yAlsDw)
+        return xp
+    else:
+        xpNew = deepcopy(xp)
+        xpNew.dfx[region] = dfnew
+        if store:
+            xpNew.dfx[region+'_bg', 'energy'] = pd.Series(x)
+            xpNew.dfx[region+'_bg', 'counts']  = pd.Series(yAlsDw)
+        return xpNew
 
 
 """        Tougaard        """
@@ -505,7 +527,8 @@ def tougaard_loop(x, y, tb=2866, tc=1643, tcd = 1, td=1, maxit=100):
     return y.min() + Btou
 
 def subtract_tougaard_bg(xp : XPS_experiment, region : str, maxit : int = 10,
-                        lb : str = '__nolabel__', ax = None, store: bool = True) -> XPS_experiment:
+                        lb : str = '__nolabel__', ax = None,
+                        store: bool = True, inplace: bool = False) -> XPS_experiment:
     """Plot region and shirley background. Decorator for shirley_loop function"""
     x, y = xp.dfx[region].dropna().energy.values, xp.dfx[region].dropna().counts.values
     col = plot_region(xp = xp, region = region, lb = lb, ax = ax).get_color()
@@ -517,21 +540,29 @@ def subtract_tougaard_bg(xp : XPS_experiment, region : str, maxit : int = 10,
     ax.legend()
 
     dfnew = pd.DataFrame({'energy' : x, 'counts' : y - ybg})
-    xpNew = deepcopy(xp)
-    xpNew.dfx[region] = dfnew
 
-    if store:
-        xpNew.dfx[region+'_bg', 'energy'] = pd.Series(x)
+    if inplace:
+        xp.dfx[region] = dfnew
+        if store:
+            xp.dfx[region+'_bg', 'energy'] = pd.Series(x)
+            xp.dfx[region+'_bg', 'counts']  = pd.Series(ybg)
+        return xp
+    else:
+        xpNew = deepcopy(xp)
+        xpNew.dfx[region] = dfnew
+        if store:
+            xpNew.dfx[region+'_bg', 'energy'] = pd.Series(x)
+            xpNew.dfx[region+'_bg', 'counts']  = pd.Series(ybg)
+        return xpNew
 
-        xpNew.dfx[region+'_bg', 'counts']  = pd.Series(ybg)
-    return xpNew
 
 
 """        Linear and ALS        """
 
 
 def subtract_linear_bg (xp : XPS_experiment, region, offset:bool = False,
-                        lb : str = None, ax = None, store: bool = True) -> XPS_experiment:
+                        lb : str = None, ax = None,
+                        store: bool = True, inplace: bool = False) -> XPS_experiment:
     """Fit background to line and subtract from data"""
 
     from scipy import stats, polyval
@@ -548,14 +579,20 @@ def subtract_linear_bg (xp : XPS_experiment, region, offset:bool = False,
     ax.plot(x, bl, '--', color=col, label='Linear Background')
 
     dfnew = pd.DataFrame({'energy' : x, 'counts' : y - bl})
-    xpNew = deepcopy(xp)
-    xpNew.dfx[region] = dfnew
-    if store:
-        xpNew.dfx[region+'_bg', 'energy'] = pd.Series(x)
 
-        xpNew.dfx[region+'_bg', 'counts']  = pd.Series(ybg)
-
-    return xpNew
+    if inplace:
+        xp.dfx[region] = dfnew
+        if store:
+            xp.dfx[region+'_bg', 'energy'] = pd.Series(x)
+            xp.dfx[region+'_bg', 'counts']  = pd.Series(bl)
+        return xp
+    else:
+        xpNew = deepcopy(xp)
+        xpNew.dfx[region] = dfnew
+        if store:
+            xpNew.dfx[region+'_bg', 'energy'] = pd.Series(x)
+            xpNew.dfx[region+'_bg', 'counts']  = pd.Series(bl)
+        return xpNew
 
 def baseline_als(y: np.array, lam: float =1e4, p: float = 0.01, niter=30) -> np.array:
     """Asymmetric Least Squares Smoothing algorithm
@@ -582,7 +619,8 @@ def baseline_als(y: np.array, lam: float =1e4, p: float = 0.01, niter=30) -> np.
     return z
 
 def subtract_als_bg (xp : XPS_experiment, region,
-                    lb : str = None, ax = None, store: bool = True) -> XPS_experiment:
+                    lb : str = None, ax = None,
+                    store: bool = True, inplace: bool = False) -> XPS_experiment:
     """Fit background to asymmetric Least Square Smoothed bg and subtract from data"""
 
     x = xp.dfx[region].dropna().energy.values
@@ -594,14 +632,22 @@ def subtract_als_bg (xp : XPS_experiment, region,
     ax.plot(x, ybg, '--', color=col, label='ALS Baseline')
 
     dfnew = pd.DataFrame({'energy' : x, 'counts' : y - ybg})
-    xpNew = deepcopy(xp)
-    xpNew.dfx[region] = dfnew
-    if store:
-        xpNew.dfx[region+'_bg', 'energy'] = pd.Series(x)
 
-        xpNew.dfx[region+'_bg', 'counts']  = pd.Series(ybg)
+    if inplace:
+        xp.dfx[region] = dfnew
+        if store:
+            xp.dfx[region+'_bg', 'energy'] = pd.Series(x)
+            xp.dfx[region+'_bg', 'counts']  = pd.Series(ybg)
+        return xp
+    else:
+        xpNew = deepcopy(xp)
+        xpNew.dfx[region] = dfnew
+        if store:
+            xpNew.dfx[region+'_bg', 'energy'] = pd.Series(x)
+            xpNew.dfx[region+'_bg', 'counts']  = pd.Series(ybg)
+        return xpNew
 
-    return xpNew
+
 
 def fix_tail_bg(xp: XPS_experiment, region: str, eup: float = None, edw: float = None,
                 ax = None, store:bool = True, inplace: bool = False):
@@ -727,32 +773,38 @@ class XPBackground(object):
 ###########################   To use in nb with list of experiments   ###########################
 
 
-def bulk_bg_subtract(experiments : list, regions : list, flag_plot:bool = True, flag_debug:bool =True) -> list:
+def batch_bg_subtract(experiments : list, regions : list, flag_plot:bool = True, flag_debug:bool = False) -> list:
     """Perform shirley bg subtraction on specified regions from several experiments
     Plot results and store them new list of experiments"""
-    bg_exps = []
-    fig, ax = plt.subplots(len(regions),2, figsize=(12, 6 * len(regions)))
-    for xp in experiments:
-        xp_bg = deepcopy(xp)   # Store current state of xp
-        for i,r in enumerate(regions):
+    bg_exps = deepcopy(experiments)
+
+    fig, ax = plt.subplots(len(regions),2, figsize=(18, 8 * len(regions)))
+    for i,r in enumerate(regions):
+        for j,xp in enumerate(bg_exps):
             if flag_debug:
                 print(xp.name, r)
             try:
-                xp_bg = subtract_shirley_bg(xp_bg, r, maxit=40, lb=xp.label, ax=ax[i][0]);    # Perform bg subtraction
+                xp = subtract_shirley_bg(xp, r, maxit=80, lb=xp.label, ax=ax[i][0],
+                                         offset=500*j, store=True, inplace=True);    # Perform bg subtraction
+                plot_region(xp, r, ax=ax[i][1], offset=0*j)
+
             except AssertionError:
                 print('Max iterations exceeded, subtract ALS baseline')
-                xp_bg = subtract_als_bg(xp_bg, r, lb=xp.label, ax = ax[i][0])
+                xp = subtract_als_bg(xp, r, lb=xp.label, ax = ax[i][0],
+                                     store=True, inplace=True)
+                plot_region(xp, r, ax=ax[i][1], offset=0*j)
+
             except KeyError as e:
                 print('KeyError on ', e)
                 continue
-            plot_region(xp_bg, r, ax=ax[i][1])
-            ax[i][0].set_title(r)
-            ax[i][1].set_title('Subtraction result')
 
-            cosmetics_plot(ax=ax[i][0], leg = False)
-            cosmetics_plot(ax=ax[i][1])
+        ax[i][0].set_title(r)
+        ax[i][1].set_title('Subtraction result')
 
-        bg_exps.append(xp_bg)   # Store bg-subtracted regions experiment
+        ax[i][0].invert_xaxis()
+        ax[i][1].invert_xaxis()
+        ax[i][1].legend(bbox_to_anchor=(1.05, 0), loc=3)
+
     fig.tight_layout()
     if not flag_plot: plt.clf(); plt.close()
     return bg_exps
@@ -764,8 +816,8 @@ def region_bg_subtract(experiments : list, region = str, flag_plot:bool = True) 
     fig, ax = plt.subplots(len(experiments), 2, figsize=(12, 6 * len(experiments)))
     for j, xp in enumerate(experiments):
         try:
-            xp_bg = subtract_shirley_bg(xp, region, maxit=100, lb='__nolabel__', ax = ax[j][0])
-            plot_region(xp_bg, region, ax=ax[j][1])
+            xp_bg = subtract_shirley_bg(xp, region, maxit=100, lb='__nolabel__', ax = ax[j][0], offset=500*j)
+            plot_region(xp_bg, region, ax=ax[j][1], offset=500*j)
             ax[j][0].set_title(xp.name)
             ax[j][1].set_title('Subtraction result')
             for i in range(2): cosmetics_plot(ax=ax[j][i])
