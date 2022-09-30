@@ -98,38 +98,31 @@ def crop_spectrum(xp : XPS_experiment, region : str,
         xpNew.dfx[region] = dfnew
         return xpNew
 
-def trim_regions(experiments: list, regions: list)->list:
+def batch_trimming(experiments: list, regions: list,
+                flag_plot: bool = True)->list:
     """Loop over specified regions, locate the experiment with shortest ends
         and trim all spectra to meet those bounds"""
 
     ### First find shortest spectra on both ends:
-    for i,r in enumerate(regions):
-        boundUp, boundDw = [], []
-        for xp in experiments:
-            try:
-                x = xp.dfx[r].dropna().energy.values
-            except KeyError:
-                pass
-            boundUp.append(x[0])
-            boundDw.append(x[-1])
-        idBoundUp = np.argmin(boundUp)
-        idBoundDw = np.argmax(boundDw)
-
-    ### Now trim each
     fig, ax = plt.subplots(len(regions), figsize=(8, 8*len(regions)))
-    trimmed_exps = []
-    for xp in experiments:
-        xp_trim = deepcopy(xp)
-        for i,r in enumerate(regions):
+    trimmed_exps = deepcopy(experiments)
+
+    for i,r in enumerate(regions):
+        rng = []
+        for j,xp in enumerate(trimmed_exps):
             try:
-                trim = trim_spectra(xp, xpRef=experiments[idBoundUp], region=r)   # Trim the upper ends
-                trim = trim_spectra(trim, xpRef=experiments[idBoundDw], region=r) # Trim the lower ends
+                rng.append(len(xp.dfx[r].dropna().energy.values))
+            except KeyError: rng.append(10000)
+
+        shorty = np.argmin(rng)
+        for j,xp in enumerate(trimmed_exps):
+            try:
+                trim_spectra(xp, xpRef=trimmed_exps[shorty], region=r, inplace=True)
             except KeyError: pass
-            plot_region(trim, r, ax=ax[i], lb=trim.name)
-            ax[i].set_title(r)
-            ax[i].legend()
-            xp_trim.dfx[r] = trim.dfx[r]
-        trimmed_exps.append(xp_trim)
+
+        if flag_plot:
+            plot_exps(trimmed_exps, r, ax=ax[i])
+
     return trimmed_exps
 
 def gaussian_smooth(xp : XPS_experiment, region, sigma : int = 2) -> XPS_experiment:
@@ -220,7 +213,28 @@ def guess_xpRef(exps:list , region: str):
             ymx.append(xp.dfx[region].counts.max())
         except KeyError:
             ymx.append(0)
-    return np.argmax(np.array(ymx))
+
+    yarr = np.array(ymx)
+    yarr.sort()
+    yarr = yarr[yarr > 0]
+    # Check if the maximum is a noisy peak ( 2σ over the aveage )
+
+    if yarr[-1] > np.average(yarr) + 2*np.std(yarr):
+        print('Noisy peak')
+        return(np.where(ymx == yarr[-2])[0][0])
+    else:
+        return np.argmax(np.array(ymx))
+
+
+def search_dnames(name: str,
+                  dnames: dict = None, experiments: list = None):
+    if dnames == None:
+        try:
+            dnames = {i: xp.name for i, xp in enumerate(experiments)}
+            return list(dnames.values()).index(name)
+        except TypeError: print("Error: Specify list of experiments")
+    else:
+        return list(dnames.values()).index(name)
 
 ########################################################
 ############ Integration area functions ################
@@ -514,7 +528,17 @@ def barplot_fit_fwhm(experiments : list, fit : np.array):
 ################################################################
 ########           Batch plotting functions             ########
 ################################################################
-
+def plot_exps(exps: list, region: str, ax = None, off = 0):
+    if ax == None: ax = plt.gca()
+    lines = []
+    for xp in exps:
+        try:
+            li = plot_region(xp, region, offset=off, ax=ax)
+            lines.append(li)
+        except KeyError:
+            pass
+    ax.legend(bbox_to_anchor=(1.05, 0), loc=3)
+    if len(lines)%2==0: ax.invert_xaxis()
 
 def plot_xp_regions(experiments : list, regions : list, colors : list = [], ncols: int = 3, flag_shift: bool = False):
     """Subplots all regions of a list of experiments (unnormalised)"""
@@ -544,8 +568,8 @@ def plot_xp_regions(experiments : list, regions : list, colors : list = [], ncol
                 enmx.append(xp.dfx[r].energy.loc[argmx])
                 comx.append(xp.dfx[r].counts.loc[argmx])
 
-            ax[j][k].text(s=r.replace('_', ' '), y=0.9, x=0.1, transform=ax[j][k].transAxes)
-            ax[j][k].set_yticks([])
+        ax[j][k].text(s=r.replace('_', ' '), y=0.9, x=0.1, transform=ax[j][k].transAxes)
+        ax[j][k].set_yticks([])
         if flag_shift:  ax[j][k].plot(enmx, comx, '--k', lw=2.5)
 
         if len(experiments)%2 == 0:
@@ -749,8 +773,11 @@ def guess_clean_xp(exp_set):
         return inds
     elif len(lref) < 1:
         print('Did not find clean experiments in this set!')
+        raise TypeError
     else:
         print('Too many clean experiments!')
+        raise ValueError
+
 
 ############################################################
 """ Scofield ASF database functions """
