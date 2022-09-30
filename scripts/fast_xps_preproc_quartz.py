@@ -50,7 +50,7 @@ def bg_subtraction(experiments: list) ->list:
 
     regions = ['C1s', 'N1s', 'O1s', 'Si2p', 'Ba3d', 'Cl2p', 'Ba4d']
 
-    bg_exps = bulk_bg_subtract(experiments, regions, )
+    bg_exps = batch_bg_subtract(experiments, regions, )
     return bg_exps
 
 def store_results(bg_exps: list, scaled_exps: list):

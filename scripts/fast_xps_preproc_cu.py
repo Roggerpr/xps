@@ -49,7 +49,7 @@ def bg_subtraction(experiments: list, regions: list) ->list:
     bg_exps = region_2bg_subtract(experiments, region='Cu_2p', xlim=938, flag_plot=False)
 
 
-    bg_exps = bulk_bg_subtract(bg_exps, regions, )
+    bg_exps = batch_bg_subtract(bg_exps, regions, )
     return bg_exps
 
 def compress_regions(bg_exps: list, indRef: int, region='# NOTE: 1s', flag_plot:bool = True):

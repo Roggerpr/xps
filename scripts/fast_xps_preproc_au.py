@@ -48,7 +48,7 @@ def glob_import_raw(globpath):
 
 def bg_subtraction(experiments: list, regions) ->list:
 
-    bg_exps = bulk_bg_subtract(experiments, regions, flag_plot=False)
+    bg_exps = batch_bg_subtract(experiments, regions, flag_plot=False)
 
     """bg2 = []
     fig, ax  = plt.subplots(1, 3)

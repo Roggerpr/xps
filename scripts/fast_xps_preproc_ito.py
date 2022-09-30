@@ -47,9 +47,16 @@ def glob_import_raw(globpath: str) -> list:
 
 def bg_subtraction(experiments: list) ->list:
 
-    regions = ['C1s', 'N1s', 'O1s', 'Si2p', 'In3d', 'C1s_(2)', 'N1s_(2)', 'O1s_(2)', 'Si2p_(2)', 'Si2s', 'Ba3d', 'Cl2p']#, 'Sn3d']
+    #regions = ['C1s', 'N1s', 'O1s', 'Si2p', 'In3d', 'C1s_(2)', 'N1s_(2)', 'O1s_(2)', 'Si2p_(2)', 'Si2s', 'Ba3d', 'Cl2p']#, 'Sn3d']
+    regions = get_all_regions(experiments)
 
-    bg_exps = bulk_bg_subtract(experiments, regions, flag_plot=False)
+    nfigs = len(experiments) // 15 + int((len(experiments) % 15) != 0) # Distribute the experiments in the plots in sets of 15
+    bg_set = []
+
+    for n in range(nfigs):
+        plt.figure()
+        bg_set.append(batch_bg_subtract(trimmed[15*n:15*(n+1)], regions, flag_plot=True))
+    bg_exps = [xp for bgs in bg_set for xp in bgs] # Flatten the list of lists
 
     bg_exps = region_2bg_subtract(bg_exps, region='In3d', xlim=449.6, flag_plot=False)
     #bg_exps = region_2bg_subtract(bg_exps, region='Sn3d', xlim=491.4, flag_plot=False)
@@ -57,38 +64,27 @@ def bg_subtraction(experiments: list) ->list:
     print([xp.name for xp in bg_exps])
     return bg_exps
 
-def store_results(bg_exps: list, scaled_exps: list):
-
-    for xpu, xps in zip(bg_exps, scaled_exps):
-        filepath, filename = os.path.split(xpu.path)
-        filename = os.path.splitext(filename)[0]
-        newpath = filepath + '/proc/'
-        try:
-            os.mkdir(newpath)
-        except FileExistsError: pass
-        print('Stored ', newpath + filename)
-        write_processed_xp(newpath + filename + '.uxy', xpu)
-        write_processed_xp(newpath + filename + '.sxy', xps)
-
 def compress_regions(bg_exps: list, indRef: int, region='N1s', flag_plot:bool = True):
     for xp in bg_exps:
-        if 'FBI' not in xp.name:
+        if 'clean' in xp.name:
             compress_noisy_region(xp=xp, xpRef=bg_exps[indRef], region=region, flag_plot=flag_plot, inplace=True)
 
 def fast_preproc_main(globpath : str):
     experiments = glob_import_raw(globpath)
 
-    regions = ['C1s', 'N1s', 'O1s', 'Si2p', 'In3d', 'Sn3d', 'Ba3d', 'Cl2p']
+    #regions = ['C1s', 'N1s', 'O1s', 'Si2p', 'In3d', 'Sn3d', 'Ba3d', 'Cl2p']
 
+    trimmed_exps = batch_trimming(experiments, regions, flag_plot=False)
+    print('Trimmed experiments')
 
-    bg_exps = bg_subtraction(experiments)
+    bg_exps = bg_subtraction(trimmed)
     print('Background subtracted, check plots')
     #plot_xp_regions(bg_exps, regions, ncols=4);
 
     #compress_regions(bg_exps, indRef=0, region='N1s', flag_plot=False)
     scaled_exps = scale_and_plot_spectra(bg_exps, region='In3d', flag_plot=False)
 
-    plot_xp_regions(scaled_exps, regions, ncols=3);
+    #plot_xp_regions(scaled_exps, regions, ncols=3);
     #plot_normal_regions(scaled_exps, regions, ncols=3);
 
     print('Experiments scaled, check plots')
